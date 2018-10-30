@@ -1,28 +1,28 @@
 #!/bin/bash
-# Automated build script 
-# Use at your own risk 
+# Automated build script
+# Use at your own risk
 #
 # tested on:
-#   * Debian 8.3 jessie (stable) x86_64 
+#   * Debian 8.3 jessie (stable) x86_64
 #   * Ubuntu 14.04 amd64
-#   * Ubuntu 16.04 amd64  
+#   * Ubuntu 16.04 amd64
 #
 # Optionally:
 # Set custom git url and branch e.g.:
-# $ bash bitcoindbuilder.sh --git-url="https://github.com/kernoelpanic/bitcoin.git" --git-branch="remotes/origin/powerclient_0.12" 
+# $ bash groestlcoindbuilder.sh --git-url="https://github.com/groestlcoin/groestlcoincoin.git"
 
-set -e 
+set -e
 
-GIT_URL="https://github.com/bitcoin/bitcoin.git"
-GIT_BRANCH="remotes/origin/0.13"
+GIT_URL="https://github.com/groestlcoin/groestlcoin.git"
+GIT_BRANCH="2.16.3"
 GIT_VERIFY="true"
 DIR=$(pwd)
 INSTALL_REQUIREMENTS="true"
 
-# print usage help 
+# print usage help
 function usage()
 {
-    echo "Bitcoin build script, automates building the current version of bitcoin-core."
+    echo "Groestlcoin build script, automates building the current version of groestlcoin-core."
     echo ""
     echo "${0}"
     echo -e "\t-h --help"
@@ -37,7 +37,7 @@ function usage()
 # install requirements for tool-chain on debian
 function debian_install_toolchain()
 {
-	echo "BB: installing tool chain ..."  
+	echo "BB: installing tool chain ..."
 	sudo apt-get install \
 	git \
 	build-essential \
@@ -46,7 +46,17 @@ function debian_install_toolchain()
 	autotools-dev \
 	automake \
 	pkg-config \
-	bsdmainutils  
+	bsdmainutils \
+  ntp \
+  make \
+  gcc \
+  autoconf \
+  cpp \
+  ngrep \
+  iftop \
+  sysstat \
+  libminiupnpc-dev \
+  libzmq3-dev
 }
 
 function debian_install_requirements()
@@ -55,12 +65,10 @@ function debian_install_requirements()
 	sudo apt-get install \
 	libssl-dev \
 	libevent-dev \
-	libboost-system-dev \
-	libboost-filesystem-dev \
-	libboost-chrono-dev \
-	libboost-program-options-dev \
-	libboost-test-dev \
-	libboost-thread-dev 
+	libboost-all-dev \
+	libdb5.3 \
+	libdb5.3-dev \
+	libdb5.3++-dev
 }
 
 ### main ###
@@ -112,20 +120,20 @@ echo "BB: INSTALL_REQUIREMENTS = ${INSTALL_REQUIREMENTS}";
 
 # installing prerequesits
 if [ "${INSTALL_REQUIREMENTS}" == "true" ];
-then 
+then
   debian_install_toolchain;
   debian_install_requirements;
 fi
 
-# Cloneg bitcoin repository
+# Clone groestlcoin repository
 cd ${DIR}
-if [ -a "./bitcoin" ];
+if [ -a "./groestlcoin" ];
 then
 	echo "git repository already cloned ... "
-else 
-	git clone ${GIT_URL} 	
+else
+	git clone ${GIT_URL}
 fi
-cd ./bitcoin 
+cd ./groestlcoin
 git fetch
 git checkout ${GIT_BRANCH}
 
@@ -134,27 +142,8 @@ then
 	git verify-commit $(git log -n1 --pretty=format:%H)
 fi
 
-# Download and install BerkleyDB locally
-echo "BB: installing BerkleyDB from source ..."
-BITCOIN_ROOT=$(pwd)
-BDB_PREFIX="${BITCOIN_ROOT}/db4"
-cd ..
-if [ -a "$BDB_PREFIX" ] && [ -a "./db-4.8.30.NC" ];
-then
-	echo "BB: BerkleyDB already there ..."
-else 
-	mkdir -p $BDB_PREFIX
-	wget 'http://download.oracle.com/berkeley-db/db-4.8.30.NC.tar.gz'
-	echo '12edc0df75bf9abd7f82f821795bcee50f42cb2e5f76a6a281b85732798364ef  db-4.8.30.NC.tar.gz' | sha256sum -c
-	tar -xzvf db-4.8.30.NC.tar.gz
-	cd db-4.8.30.NC/build_unix/
-	../dist/configure --enable-cxx --disable-shared --with-pic --prefix=$BDB_PREFIX
-	make install
-fi
-cd $BITCOIN_ROOT
-
-# Build bitcoin core
-cd "${BITCOIN_ROOT}"
+# Build groestlcoin core
+cd "${DIR}"
 
 ./autogen.sh
 
@@ -162,18 +151,10 @@ echo "BB: autgen DONE ";
 sleep 2
 
 
-./configure \
-LDFLAGS="-L${BDB_PREFIX}/lib/" \
-CPPFLAGS="-I${BDB_PREFIX}/include/" \
---without-gui \
---without-miniupnpc \
---disable-zmq \
---enable-hardening 
+./configure
 #--with-pic
 
 #./configure \
-#LDFLAGS="-L${BDB_PREFIX}/lib/ -L/usr/lib/x86_64-linux-gnu -static" \
-#CPPFLAGS="-I${BDB_PREFIX}/include/" \
 #CXXFLAGS="-static" \
 #CFLAGS="-static" \
 #--disable-zmq \
